@@ -1,0 +1,17 @@
+{
+  "name": "fallguard_shared",
+  "version": "0.1.0-alpha",
+  "description": "Shared FallGuard Edge core, vision, classification, and decision modules.",
+  "keywords": [
+    "fall-detection",
+    "tinyml",
+    "esp32",
+    "computer-vision"
+  ],
+  "build": {
+    "includeDir": "include",
+    "srcDir": "src"
+  },
+  "frameworks": "*",
+  "platforms": "*"
+}
