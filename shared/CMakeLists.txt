@@ -4,6 +4,10 @@ add_library(fallguard_shared
     src/config.cpp
     src/decision_engine.cpp
     src/frame.cpp
+    src/image/bounding_box.cpp
+    src/image/connected_components.cpp
+    src/image/image_processor.cpp
+    src/image/morphology.cpp
     src/logger.cpp
     src/tinyml_engine.cpp
     src/vision_engine.cpp

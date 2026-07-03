@@ -262,17 +262,21 @@ int main(int argc, char* argv[])
 
         fallguard::Logger logger(std::cout);
         fallguard::VisionEngine vision(config);
+        fallguard::ImageProcessor image_processor(config);
         fallguard::TinyMlEngine classifier(config);
         fallguard::DecisionEngine decision(config);
         fallguard::AlertManager alerts;
 
         logger.log(fallguard::LogLevel::Info, "FallGuard Edge simulator started");
-        std::cout << "time_ms,pose,confidence,state,alert,width,height\n";
+        std::cout << "time_ms,pose,confidence,state,alert,blob_pixels,width,height\n";
 
         fallguard::CapturedFrame frame;
         while (source->read(frame)) {
-            auto silhouette = vision.extract_silhouette(frame.image);
-            auto result = classifier.classify(silhouette);
+            // Camera -> per-pixel threshold/ignore-zones -> denoise + pick
+            // the single largest blob -> classify -> confirm -> alert.
+            auto raw_silhouette = vision.extract_silhouette(frame.image);
+            auto processed = image_processor.process(raw_silhouette);
+            auto result = classifier.classify(processed.silhouette);
             auto state = decision.update(result, frame.timestamp_ms);
             alerts.update(state);
 
@@ -281,6 +285,7 @@ int main(int argc, char* argv[])
                       << std::fixed << std::setprecision(2) << result.confidence << ','
                       << fallguard::to_string(state) << ','
                       << (alerts.is_active() ? "on" : "off") << ','
+                      << processed.pixel_count << ','
                       << frame.image.width() << ','
                       << frame.image.height() << '\n';
         }

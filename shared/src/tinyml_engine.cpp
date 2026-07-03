@@ -43,8 +43,7 @@ ClassificationResult TinyMlEngine::classify(const SilhouetteFrame& silhouette) c
     result.bounds.width = static_cast<std::uint16_t>(max_x - min_x + 1);
     result.bounds.height = static_cast<std::uint16_t>(max_y - min_y + 1);
 
-    const auto height = std::max<std::uint16_t>(result.bounds.height, 1);
-    const auto aspect_ratio = static_cast<float>(result.bounds.width) / height;
+    const auto aspect_ratio = result.bounds.aspect_ratio();
 
     if (aspect_ratio >= config_.lying_aspect_ratio) {
         result.pose = PoseClass::Lying;

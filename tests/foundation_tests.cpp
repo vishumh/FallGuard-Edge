@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <vector>
 
 namespace {
 
@@ -56,6 +57,129 @@ void classifier_separates_upright_and_lying_shapes()
     fallguard::ImageFrame lying(32, 32, 0);
     draw_rect(lying, 5, 20, 20, 4);
     assert(classifier.classify(vision.extract_silhouette(lying)).pose == fallguard::PoseClass::Lying);
+}
+
+void morphology_open_removes_salt_noise_but_keeps_large_blob()
+{
+    fallguard::SilhouetteFrame frame(16, 16);
+    // A solid 6x6 "person" blob.
+    for (std::uint16_t y = 4; y < 10; ++y) {
+        for (std::uint16_t x = 4; x < 10; ++x) {
+            frame.set(x, y, true);
+        }
+    }
+    // Isolated single-pixel noise, disconnected from the blob.
+    frame.set(0, 0, true);
+    frame.set(15, 15, true);
+    frame.set(1, 14, true);
+
+    const auto opened = fallguard::morphological_open(frame, 1);
+
+    assert(!opened.at(0, 0));
+    assert(!opened.at(15, 15));
+    assert(!opened.at(1, 14));
+    // The interior of the solid blob must survive a single open() pass.
+    assert(opened.at(6, 6));
+    assert(opened.at(7, 7));
+}
+
+void connected_components_finds_largest_blob_and_labels()
+{
+    fallguard::SilhouetteFrame frame(10, 10);
+    // Small blob: 2 pixels.
+    frame.set(0, 0, true);
+    frame.set(1, 0, true);
+    // Large blob: 3x3 = 9 pixels, diagonally adjacent to the small blob's
+    // neighborhood so 8-connectivity matters for this test to be meaningful.
+    for (std::uint16_t y = 5; y < 8; ++y) {
+        for (std::uint16_t x = 5; x < 8; ++x) {
+            frame.set(x, y, true);
+        }
+    }
+
+    std::vector<std::int32_t> labels;
+    const auto components = fallguard::find_connected_components(
+        frame, fallguard::Connectivity::Eight, &labels);
+
+    assert(components.size() == 2);
+
+    const auto* best = fallguard::largest_component(components);
+    assert(best != nullptr);
+    assert(best->pixel_count == 9);
+    assert(best->bounds.x == 5 && best->bounds.y == 5);
+    assert(best->bounds.width == 3 && best->bounds.height == 3);
+
+    const auto best_index = static_cast<std::int32_t>(best - components.data());
+    assert(labels[static_cast<std::size_t>(5) * frame.width() + 5] == best_index);
+    assert(labels[0] != best_index); // the small blob's top-left pixel
+}
+
+void image_processor_isolates_largest_blob_and_drops_noise()
+{
+    fallguard::FallGuardConfig config{};
+    config.frame_width = 20;
+    config.frame_height = 20;
+    config.min_foreground_pixels = 5;
+    config.denoise_iterations = 1;
+
+    fallguard::SilhouetteFrame raw(20, 20);
+    // Solid "person" blob, big enough to survive one open() pass.
+    for (std::uint16_t y = 10; y < 16; ++y) {
+        for (std::uint16_t x = 10; x < 16; ++x) {
+            raw.set(x, y, true);
+        }
+    }
+    // Isolated single-pixel sensor noise far from the blob.
+    raw.set(0, 0, true);
+
+    fallguard::ImageProcessor processor(config);
+    const auto processed = processor.process(raw);
+
+    assert(processed.has_subject);
+    assert(!processed.silhouette.at(0, 0));
+    assert(processed.silhouette.at(12, 12));
+    assert(processed.bounds.width > 0 && processed.bounds.height > 0);
+}
+
+void image_processor_reports_no_subject_when_scene_is_empty()
+{
+    fallguard::FallGuardConfig config{};
+    config.frame_width = 10;
+    config.frame_height = 10;
+    config.min_foreground_pixels = 5;
+
+    fallguard::SilhouetteFrame raw(10, 10);
+    fallguard::ImageProcessor processor(config);
+    const auto processed = processor.process(raw);
+
+    assert(!processed.has_subject);
+    assert(processed.pixel_count == 0);
+}
+
+void ignore_zones_round_trip_through_string_serialization()
+{
+    fallguard::FallGuardConfig config{};
+    assert(config.add_ignore_zone({1, 2, 3, 4}));
+    assert(config.add_ignore_zone({10, 20, 30, 40}));
+
+    const auto text = config.serialize_ignore_zones();
+    assert(text == "1,2,3,4;10,20,30,40");
+
+    fallguard::FallGuardConfig restored{};
+    assert(restored.load_ignore_zones_from_string(text));
+    assert(restored.ignore_zone_count == 2);
+    assert(restored.is_ignored(2, 3));
+    assert(restored.is_ignored(15, 25));
+    assert(!restored.is_ignored(0, 0));
+
+    // Loading a fresh (empty) string clears any existing zones.
+    assert(restored.load_ignore_zones_from_string(""));
+    assert(restored.ignore_zone_count == 0);
+
+    // Malformed input is rejected and leaves prior state untouched.
+    fallguard::FallGuardConfig malformed{};
+    assert(malformed.add_ignore_zone({1, 1, 1, 1}));
+    assert(!malformed.load_ignore_zones_from_string("not,valid"));
 }
 
 void decision_engine_confirms_only_after_timer()
@@ -138,6 +262,11 @@ int main()
 {
     vision_applies_threshold_and_ignore_zones();
     classifier_separates_upright_and_lying_shapes();
+    morphology_open_removes_salt_noise_but_keeps_large_blob();
+    connected_components_finds_largest_blob_and_labels();
+    image_processor_isolates_largest_blob_and_drops_noise();
+    image_processor_reports_no_subject_when_scene_is_empty();
+    ignore_zones_round_trip_through_string_serialization();
     decision_engine_confirms_only_after_timer();
     alert_tracks_confirmed_fall_state();
     camera_source_abstraction_returns_captured_frames();

@@ -2,6 +2,7 @@
 
 #include "fallguard/config.hpp"
 #include "fallguard/frame.hpp"
+#include "fallguard/image/bounding_box.hpp"
 
 #include <cstdint>
 
@@ -12,13 +13,6 @@ enum class PoseClass {
     Upright,
     Lying,
     Unknown,
-};
-
-struct BoundingBox {
-    std::uint16_t x{0};
-    std::uint16_t y{0};
-    std::uint16_t width{0};
-    std::uint16_t height{0};
 };
 
 struct ClassificationResult {

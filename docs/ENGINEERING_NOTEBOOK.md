@@ -1,32 +1,87 @@
+# FallGuard Edge Engineering Notebook
+
+---
+
 # Sprint 2.1
-
-## Date
-
-01-Jul-2026
 
 ## Objective
 
-Establish project documentation and development process.
+Establish project documentation and repository workflow.
 
 ## Completed
 
-- Documentation folder created.
-- ADR folder created.
-- ROADMAP.md created.
-- PROJECT_CONTEXT.md created.
-- ENGINEERING_NOTEBOOK.md created.
+- Documentation framework
+- ADR structure
+- Sprint planning
+- Engineering process
 
-## Decisions
+## Result
 
-- Documentation will evolve together with implementation.
-- Repository is the single source of truth.
-- Shared library remains platform independent.
-- Vision pipeline will be modular.
+PASS
+
+---
+
+# Sprint 2.2
+
+## Objective
+
+Implement a modular image processing pipeline.
+
+## Implemented
+
+- ImageProcessor abstraction
+- Morphological filtering
+- Connected component detection
+- Largest blob extraction
+- Bounding box extraction
+
+## Why
+
+Preparing the project for TinyML inference required separating image processing from the Vision Engine.
+
+Rather than extending VisionEngine indefinitely, a dedicated ImageProcessor module was introduced.
 
 ## Lessons Learned
 
-Planning architecture before implementation reduces technical debt.
+- Keep VisionEngine small.
+- Algorithms belong inside ImageProcessor.
+- Morphology significantly reduces threshold noise.
+- Largest connected component provides a reliable person candidate.
 
-## Sprint Result
+## Technical Debt
+
+None identified.
+
+## Performance Notes
+
+Current implementation is suitable for ESP32-CAM target frame rates (1–2 FPS).
+
+## Repository Health
+
+Build
 
 PASS
+
+Tests
+
+PASS
+
+Documentation
+
+Updated
+
+Issue
+
+#1 (Ready for Functional Validation)
+
+---
+
+# Next Sprint
+
+Sprint 2.3
+
+Simulator visualization.
+
+Objective:
+
+Display every image processing stage for debugging.
